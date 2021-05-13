@@ -6,7 +6,6 @@ import android.view.View
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import kotlin.math.absoluteValue
 import kotlin.math.pow
 
@@ -254,9 +253,11 @@ class MainActivity : AppCompatActivity() {
             }
             return Pair(W1, W2)
         }
-        if (W1.isNaN() || W1 == Double.NEGATIVE_INFINITY || W1 == Double.POSITIVE_INFINITY || W2.isNaN() || W2 == Double.NEGATIVE_INFINITY || W2 == Double.POSITIVE_INFINITY){
+
+        val res =  result()
+        if (res.first.isNaN() || res.first == Double.NEGATIVE_INFINITY || res.first == Double.POSITIVE_INFINITY || res.second.isNaN() || res.second == Double.NEGATIVE_INFINITY || res.second == Double.POSITIVE_INFINITY){
             return ("W1 is $W1, W2 is $W2 => ERROR")
         }
-        return result().toString();
+        return res.toString()
     }
 }
