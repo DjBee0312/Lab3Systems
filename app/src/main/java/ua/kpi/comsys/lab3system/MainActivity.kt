@@ -1,11 +1,13 @@
 package ua.kpi.comsys.lab3system
 
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import kotlin.math.absoluteValue
 import kotlin.math.pow
 
@@ -21,9 +23,19 @@ class MainActivity : AppCompatActivity() {
         val textView = findViewById<TextView>(R.id.id_answer)
         val number = editText.text.toString().toInt()
         val ans = Fermat(number)
+        var time = 0.toLong()
         textView.apply {
-            text = ans
+            if (number % 2 == 0) {
+                text = "Please enter odd number!"
+            }
+            else
+            {
+                time = ans[2]
+                ans.removeAt(2)
+                text = ans.toString()
+            }
         }
+        Toast.makeText(applicationContext ,time.toString(), Toast.LENGTH_LONG).show() //Time shown in nanoseconds
     }
 
     fun calculate2(view: View){
@@ -35,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         val selected3 = spinner3.selectedItem.toString().toInt()
         val textView = findViewById<TextView>(R.id.id_answer2)
 
-        val answer = Perceptron(selected1,selected2,selected3)
+        val answer = Perceptron(selected1, selected2, selected3)
 
         textView.apply {
             text = answer
@@ -54,17 +66,27 @@ class MainActivity : AppCompatActivity() {
         val x3 = editText3.text.toString().toDouble()
         val x4 = editText4.text.toString().toDouble()
         val y = editText5.text.toString().toDouble()
-        val ans = Evo(x1,x2,x3,x4,y)
+        val ans = Evo(x1, x2, x3, x4, y)
+        val ans2 = EvoBig(x1, x2, x3, x4, y)
+        val comp = CompareEvos(x1, x2, x3, x4, y)
+
         textView.apply {
-            text = ans
+            if (!ans.isEmpty()) {
+                ans.removeAt(4)
+                text = "Evo:$ans\nCompareEvos:$comp"
+            } else {
+                text = "Couldn't find in range y/2\nCompareEvos:$comp"
+            }
+           // text = ans.toString() + "\n" + CompareEvos(x1,x2,x3,x4,y)
         }
     }
 
-    private fun Fermat(number : Int) : String
+    private fun Fermat(number: Int) : MutableList<Long>
     {
+        val startTime = System.nanoTime()
         //number = ((a + b) * (a - b))) = a^2 - b^2        30
         if (number % 2 == 0){
-            return "Please enter odd number!"
+            return mutableListOf(0)
         }
         val numberSqrt = kotlin.math.sqrt(number.toDouble()).toInt() + 1     //5,449287429383 + 1 = 6
         var k = 0
@@ -80,15 +102,19 @@ class MainActivity : AppCompatActivity() {
         }
         val a : Int = numberSqrt + k
         val b : Int = kotlin.math.sqrt(bPow.toDouble()).toInt()
-        return mutableListOf(a, b).toString()
+
+        val finishTime = System.nanoTime()
+
+        return mutableListOf(a.toLong(), b.toLong(), finishTime-startTime)
     }
 
     private fun Evo(x1_base: Double,
                     x2_base: Double,
                     x3_base: Double,
                     x4_base: Double,
-                    y_base: Double) : String{
+                    y_base: Double) : MutableList<Double>{
 
+        var counter = 0
         val populationZero: MutableList<MutableList<Double>> = mutableListOf()
         val population: MutableList<MutableList<Double>> = mutableListOf()
         val listOfFitnesses: MutableList<Double> = mutableListOf()
@@ -157,6 +183,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun crossingOver() {
+            counter++
             population.clear()
             for (p in 0..3) {
                 val c: MutableList<Double> = mutableListOf()
@@ -216,13 +243,190 @@ class MainActivity : AppCompatActivity() {
         }
         
         val answer : MutableList<Double>  =  result();
+
         if (answer.isEmpty()) {
-            return "No possible answer in range [1;y/2]";
+            return answer;
+//            return "No possible answer in range [1;y/2]";
         }
-        return answer.toString();
+        answer.add(counter.toDouble())
+        return answer
+//        return "$answer Counter: $counter"
     }
 
-    private fun Perceptron (speed: Double, time: Double, iterations: Int): String{
+    private fun CompareEvos(x1_base: Double,
+                            x2_base: Double,
+                            x3_base: Double,
+                            x4_base: Double,
+                            y_base: Double) : String{
+        var counterEvo = 0
+        var counterEvoBig = 0
+
+        var res1 : MutableList<Double> = mutableListOf()
+        var res2 : MutableList<Double> = mutableListOf()
+
+        for ( i in 0..99){
+            res1 = Evo(x1_base, x2_base, x3_base, x4_base, y_base)
+            res2 = EvoBig(x1_base, x2_base, x3_base, x4_base, y_base)
+            if (!res2.isEmpty() && !res1.isEmpty()){
+                counterEvo += res1[4].toInt()
+                counterEvoBig += res2[4].toInt()
+            }
+        }
+
+        return if (counterEvo > counterEvoBig){
+            "Increase was good idea!"//\nCountEvo:$counterEvo,CountEvoBig:$counterEvoBig"
+        } else{
+            "Unnecessary increasing!"//\nCountEvo:$counterEvo,CountEvoBig:$counterEvoBig"
+        }
+
+    }
+
+    private fun EvoBig(x1_base: Double,
+                       x2_base: Double,
+                       x3_base: Double,
+                       x4_base: Double,
+                       y_base: Double) : MutableList<Double>{
+
+        var counter = 0
+        val populationZero: MutableList<MutableList<Double>> = mutableListOf()
+        val population: MutableList<MutableList<Double>> = mutableListOf()
+        val listOfFitnesses: MutableList<Double> = mutableListOf()
+        val populationOfChild: MutableList<MutableList<Double>> = mutableListOf()
+        var bestPopulation: MutableList<Double> = mutableListOf()
+
+        fun fitness(population: MutableList<Double>): Double {
+            val fitness: Double = y_base -
+                    population[0] * x1_base -
+                    population[1] * x2_base -
+                    population[2] * x3_base -
+                    population[3] * x4_base
+            return fitness.absoluteValue
+        }
+
+        fun populationZeroFind() {
+            for (i in 0..7) {
+                populationZero.add(mutableListOf())
+                for (j in 0..3) {
+                    populationZero[i].add((1..8).random().toDouble())
+                }
+            }
+        }
+
+        fun findFitnessOfPopulation() {
+            listOfFitnesses.clear()
+            if (population.isEmpty()) {
+                populationZero.mapTo(population) { it }
+            }
+            for (i in 0..7) {
+                listOfFitnesses.add(fitness(population[i]))
+            }
+        }
+
+        fun findRoulette() {
+            populationOfChild.clear()
+            var roulette = 0.00
+            val roulettePercent: MutableList<Double> = mutableListOf()
+            val circleRoulette: MutableList<Double> = mutableListOf()
+            listOfFitnesses.forEach { roulette += 1 / it }
+            for (i in 0..7) {
+                roulettePercent.add(1 / listOfFitnesses[i] / roulette)
+            }
+
+            for (i in 0..7) {
+                if (i == 0) {
+                    circleRoulette.add(roulettePercent[i])
+                } else {
+                    circleRoulette.add(circleRoulette[i - 1] + roulettePercent[i])
+                }
+            }
+
+            var i = 0
+            populationOfChild.clear()
+            while (i < 8) {
+                val piu: Double = (1..100).random().toDouble() / 100
+                var thisChild = 0
+                for (k in 0..7) {
+                    if (piu >= circleRoulette[k]) {
+                        thisChild = k
+                    }
+                }
+                populationOfChild.add(population[thisChild])
+                i++
+            }
+        }
+
+        fun crossingOver() {
+            counter++
+            population.clear()
+            for (p in 0..7) {
+                val c: MutableList<Double> = mutableListOf()
+                c.clear()
+                for (j in 0..3) {
+                    if (p % 2 == 0) {
+                        if (j < 2) {
+                            c.add(populationOfChild[p][j])
+                        } else c.add(populationOfChild[p + 1][j])
+                    } else
+                        if (j < 2) {
+                            c.add(populationOfChild[p][j])
+                        } else c.add(populationOfChild[p - 1][j])
+                }
+                population.add(c)
+            }
+        }
+
+        fun bestFitnessFind(): Boolean {
+            findFitnessOfPopulation()
+            listOfFitnesses.forEach { if (it == 0.0) return true }
+            return false
+        }
+
+        fun life() {
+            var q = 0
+            while (!bestFitnessFind() && q < 10) {
+                findFitnessOfPopulation()
+                findRoulette()
+                crossingOver()
+                q++
+            }
+        }
+
+        fun result(): MutableList<Double> {
+            populationZeroFind()
+            life()
+            while ((!listOfFitnesses.contains(0.0)) &&
+                    population[0] == populationOfChild[0] &&
+                    population[1] == populationOfChild[1] &&
+                    population[2] == populationOfChild[2] &&
+                    population[3] == populationOfChild[3]
+            ) {
+                populationZero.clear()
+                population.clear()
+                listOfFitnesses.clear()
+                populationOfChild.clear()
+                populationZeroFind()
+                life()
+            }
+            for (i in 0..3) {
+                if (listOfFitnesses[i] == 0.0) {
+                    bestPopulation = population[i]
+                }
+            }
+            return bestPopulation
+        }
+
+        val answer : MutableList<Double>  =  result();
+
+        if (answer.isEmpty()) {
+            return answer;
+//            return "No possible answer in range [1;y/2]";
+        }
+        answer.add(counter.toDouble())
+        return answer
+//        return "$answer Counter: $counter"
+    }
+
+    private fun Perceptron(speed: Double, time: Double, iterations: Int): String{
         var W1 = 0.00
         var W2 = 0.00
         val P = 4.00
